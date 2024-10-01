@@ -57,7 +57,7 @@ public class SaveService {
 
     public void saveToCsv(File savedFile, List<Item> items) throws IOException {
         if (savedFile != null) {
-            try (PrintWriter pw = new PrintWriter(savedFile)) {
+            try (PrintWriter pw = new PrintWriter(savedFile, "Cp1251")) {
                 pw.println("№,Наименование,Дата регистрации,Количество,Описание,Изображение");
                 items.stream()
                         .map(item -> this.convertToString(item, DELIMITER_FOR_CSV))
