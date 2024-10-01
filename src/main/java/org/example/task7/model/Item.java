@@ -27,7 +27,7 @@ public class Item {
         this.active = new SimpleBooleanProperty(false);
         this.name = new SimpleStringProperty(name);
         this.registrationDate = new SimpleStringProperty(registrationDate);
-        this.amount = new SimpleStringProperty(String.valueOf(amount));
+        this.amount = new SimpleStringProperty(amount);
         this.description = new SimpleStringProperty(description);
         this.pathToImage = new SimpleStringProperty(pathToImage);
     }
@@ -37,7 +37,7 @@ public class Item {
         this.id = new SimpleLongProperty(id);
         this.name = new SimpleStringProperty(name);
         this.registrationDate = new SimpleStringProperty(registrationDate);
-        this.amount = new SimpleStringProperty(String.valueOf(amount));
+        this.amount = new SimpleStringProperty(amount);
         this.description = new SimpleStringProperty(description);
         this.pathToImage = new SimpleStringProperty(pathToImage);
     }

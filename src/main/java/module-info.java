@@ -8,6 +8,7 @@ module org.example.task7 {
     requires org.apache.poi.poi;
     requires org.apache.poi.ooxml;
     requires java.desktop;
+    requires jdk.compiler;
 
     opens org.example.task7 to javafx.fxml;
     exports org.example.task7;

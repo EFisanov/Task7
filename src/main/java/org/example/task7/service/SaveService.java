@@ -1,6 +1,8 @@
-package org.example.task7;
+package org.example.task7.service;
 
 
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
@@ -13,37 +15,73 @@ import java.io.*;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.example.task7.utility.Constants.DELIMITER_FOR_CSV;
 import static org.example.task7.utility.Constants.FORMATTER;
 
 public class SaveService {
-    private static final String PATH_TO_DIRECTORY = "src/main/resources/";
-    private static final String DELIMITER_FOR_CSV = ",";
 
-    public void saveToCSV(List<Item> items) throws IOException {
-        File savedFile = new File(PATH_TO_DIRECTORY + "csvFile.csv");
 
-        try (PrintWriter pw = new PrintWriter(savedFile)) {
-            pw.println("№,Наименование,Дата регистрации,Количество,Описание,Изображение");
-            items.stream()
-                    .map(item -> this.convertToString(item, DELIMITER_FOR_CSV))
-                    .forEach(pw::println);
+    public void saveToFile(Stage stage, List<Item> items) throws IOException {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save");
+        fileChooser.setInitialFileName("exportData");
+        fileChooser.getExtensionFilters()
+                .addAll(
+                        new FileChooser.ExtensionFilter("CSV files (*.csv)", "*.csv"),
+                        new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt"),
+                        new FileChooser.ExtensionFilter("Excel files (*.xlsx)", "*.xlsx")
+                );
+        File selectedFile = fileChooser.showSaveDialog(stage);
+        if (selectedFile == null) {
+            return;
+        }
+        if (getExtensionsFile(selectedFile).equals(".xlsx")) {
+            saveToXlsx(selectedFile, items);
+        } else if (getExtensionsFile(selectedFile).equals(".csv")) {
+            saveToCsv(selectedFile, items);
+        } else if (getExtensionsFile(selectedFile).equals(".txt")) {
+            saveToTxt(selectedFile, items);
         }
     }
 
-    public void saveToXlsx(List<Item> items) throws IOException {
+    public void saveToTxt(File savedFile, List<Item> items) throws IOException {
+        if (savedFile != null) {
+            try (PrintWriter pw = new PrintWriter(savedFile)) {
+                pw.println("№,Наименование,Дата регистрации,Количество,Описание,Изображение");
+                items.stream()
+                        .map(item -> this.convertToString(item, DELIMITER_FOR_CSV))
+                        .forEach(pw::println);
+            }
+        }
+    }
+
+    public void saveToCsv(File savedFile, List<Item> items) throws IOException {
+        if (savedFile != null) {
+            try (PrintWriter pw = new PrintWriter(savedFile)) {
+                pw.println("№,Наименование,Дата регистрации,Количество,Описание,Изображение");
+                items.stream()
+                        .map(item -> this.convertToString(item, DELIMITER_FOR_CSV))
+                        .forEach(pw::println);
+            }
+        }
+    }
+
+    public void saveToXlsx(File savedFile, List<Item> items) throws IOException {
         XSSFWorkbook workbook = new XSSFWorkbook();
 
-        Sheet sheet = workbook.createSheet("Items");
+        Sheet sheet = workbook.createSheet("Опись имущества");
         sheet.setColumnWidth(0, 1000);
-        sheet.setColumnWidth(1, 5000);
+        sheet.setColumnWidth(1, 6000);
         sheet.setColumnWidth(2, 5000);
         sheet.setColumnWidth(3, 4000);
-        sheet.setColumnWidth(4, 12000);
-        sheet.setColumnWidth(5, 6000);
+        sheet.setColumnWidth(4, 20000);
+        sheet.setColumnWidth(5, 8000);
 
         Row header = sheet.createRow(0);
 
         CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
         headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
         headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
@@ -85,15 +123,20 @@ public class SaveService {
             row.setHeight((short) 3000);
 
             Cell cell = row.createCell(0);
+            style.setAlignment(HorizontalAlignment.CENTER);
+            style.setVerticalAlignment(VerticalAlignment.CENTER);
             cell.setCellValue(items.get(i).getId());
             cell.setCellStyle(style);
 
             cell = row.createCell(1);
+            style.setAlignment(HorizontalAlignment.LEFT);
             cell.setCellValue(items.get(i).getName());
             cell.setCellStyle(style);
 
             cell = row.createCell(2);
             CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.setAlignment(HorizontalAlignment.CENTER);
+            dateStyle.setVerticalAlignment(VerticalAlignment.CENTER);
             dateStyle.setDataFormat((short) 14);
             cell.setCellStyle(dateStyle);
             LocalDate actualDate = LocalDate.parse(items.get(i).getRegistrationDate(), FORMATTER);
@@ -103,9 +146,12 @@ public class SaveService {
             CellStyle numericStyle = workbook.createCellStyle();
             numericStyle.setDataFormat((short) 2);
             cell.setCellStyle(numericStyle);
-            cell.setCellValue(Double.parseDouble(items.get(i).getAmount()));
+            numericStyle.setAlignment(HorizontalAlignment.CENTER);
+            numericStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            cell.setCellValue(items.get(i).getAmount());
 
             cell = row.createCell(4);
+            style.setAlignment(HorizontalAlignment.LEFT);
             cell.setCellValue(items.get(i).getDescription());
             cell.setCellStyle(style);
 
@@ -123,7 +169,6 @@ public class SaveService {
             }
         }
 
-        File savedFile = new File(PATH_TO_DIRECTORY + "xlsxFile.xlsx");
         FileOutputStream outputStream = new FileOutputStream(savedFile.getAbsolutePath());
         workbook.write(outputStream);
         workbook.close();
@@ -134,18 +179,6 @@ public class SaveService {
         byte[] bytes = IOUtils.toByteArray(is);
         is.close();
         return bytes;
-    }
-
-    public String escapeSpecialCharacters(String data) {
-        if (data == null) {
-            throw new IllegalArgumentException("Input data cannot be null");
-        }
-        String escapedData = data.replaceAll("\\R", " ");
-        if (data.contains(",") || data.contains("\"") || data.contains("'")) {
-            data = data.replace("\"", "\"\"");
-            escapedData = "\"" + data + "\"";
-        }
-        return escapedData;
     }
 
     public String convertToString(Item item, String delimiter) {
@@ -162,5 +195,14 @@ public class SaveService {
         stringBuilder.append(delimiter);
         stringBuilder.append(item.getPathToImage() == null ? "" : item.getPathToImage());
         return stringBuilder.toString();
+    }
+
+    private String getExtensionsFile(File file) {
+        String name = file.getName();
+        int lastIndexOf = name.lastIndexOf(".");
+        if (lastIndexOf == -1) {
+            return "";
+        }
+        return name.substring(lastIndexOf);
     }
 }
