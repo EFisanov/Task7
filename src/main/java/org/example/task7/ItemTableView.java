@@ -27,6 +27,7 @@ import org.example.task7.service.SaveService;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,180 +47,234 @@ public class ItemTableView extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("Table View Sample");
-        stage.setWidth(1350);
-        stage.setHeight(700);
+        try {
+            stage.setTitle("Table View Sample");
+            stage.setWidth(1350);
+            stage.setHeight(700);
 
-        Scene scene = new Scene(new Group());
-        tableView.getStylesheets().add("myStyles.css");
+            Scene scene = new Scene(new Group());
+            tableView.getStylesheets().add("myStyles.css");
 
-        final Label label = new Label("Опись имущества");
-        label.setFont(new Font("Arial", 20));
+            final Label label = new Label("Опись имущества");
+            label.setFont(new Font("Arial", 20));
 
-        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-        errorAlert.setHeaderText(null);
-        errorAlert.setTitle("Ошибка!");
+            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+            errorAlert.setHeaderText(null);
+            errorAlert.setTitle("Ошибка!");
 
-        Alert comfirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-        comfirmAlert.setTitle("Требуется подтверждение");
-        comfirmAlert.setContentText("Нажмите ОК для удаления и Cancel для отмены");
+            Alert comfirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            comfirmAlert.setTitle("Требуется подтверждение");
+            comfirmAlert.setContentText("Нажмите ОК для удаления и Cancel для отмены");
 
-        data.addAll(itemService.getAll());
-        tableView.setItems(data);
-        tableView.setEditable(true);
+            data.addAll(itemService.getAll());
+            tableView.setItems(data);
+            tableView.setEditable(true);
 
-        TableColumn<Item, Boolean> activeColumn = new TableColumn<>();
-        activeColumn.setCellValueFactory(cd -> cd.getValue().activeProperty());
-        activeColumn.setCellFactory(CheckBoxTableCell.forTableColumn(activeColumn));
+            TableColumn<Item, Boolean> activeColumn = new TableColumn<>();
+            activeColumn.setCellValueFactory(cd -> cd.getValue().activeProperty());
+            activeColumn.setCellFactory(CheckBoxTableCell.forTableColumn(activeColumn));
 
-        TableColumn<Item, String> idColumn = createColumn("№", "id", 50);
-        idColumn.setStyle("-fx-alignment: CENTER;");
+            TableColumn<Item, String> idColumn = createColumn("№", "id", 50);
+            idColumn.setStyle("-fx-alignment: CENTER;");
 
-        TableColumn<Item, String> nameColumn = createColumn("Наименование", "name", 180);
-        nameColumn.setStyle("-fx-alignment: CENTER-LEFT;");
-        nameColumn.setCellFactory(TextFieldTableCell.forTableColumn());
-        nameColumn.setOnEditCommit(
-                t -> {
-                    Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
-                    String updatedValue = itemService.updateName(id, t.getNewValue());
-                    t.getTableView().getItems().get(t.getTablePosition().getRow()).setName(updatedValue);
-                }
-        );
-
-        TableColumn<Item, String> dateColumn = createColumn("Дата регистрации", "registrationDate", 110);
-        dateColumn.setStyle("-fx-alignment: CENTER;");
-        dateColumn.setCellFactory(TextFieldTableCell.forTableColumn());
-        dateColumn.setOnEditCommit(
-                t -> {
-                    Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
-                    String oldValue = t.getTableView().getItems().get(t.getTablePosition().getRow()).getRegistrationDate();
-                    if (isDate(t.getNewValue())) {
-                        String updatedValue = itemService.updateRegistrationDate(id, t.getNewValue());
-                        t.getTableView().getItems().get(t.getTablePosition().getRow()).setRegistrationDate(updatedValue);
-                    } else {
-                        t.getTableView().getItems().get(t.getTablePosition().getRow()).setRegistrationDate(oldValue);
-                        errorAlert.setContentText("Допустимый формат даты: ДД.ММ.ГГГГ");
-                        errorAlert.showAndWait();
+            TableColumn<Item, String> nameColumn = createColumn("Наименование", "name", 180);
+            nameColumn.setStyle("-fx-alignment: CENTER-LEFT;");
+            nameColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            nameColumn.setOnEditCommit(
+                    t -> {
+                        Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
+                        String updatedValue = null;
+                        try {
+                            updatedValue = itemService.updateName(id, t.getNewValue());
+                        } catch (SQLException e) {
+                            callDataBaseErrorAlert();
+                            e.printStackTrace();
+                        }
+                        t.getTableView().getItems().get(t.getTablePosition().getRow()).setName(updatedValue);
                     }
-                    reloadDataList();
-                }
-        );
+            );
 
-        TableColumn<Item, String> amountColumn = createColumn("Количество", "amount", 80);
-        amountColumn.setStyle("-fx-alignment: CENTER;");
-        amountColumn.setCellFactory(TextFieldTableCell.forTableColumn());
-        amountColumn.setOnEditCommit(
-                t -> {
-                    Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
-                    String oldValue = t.getTableView().getItems().get(t.getTablePosition().getRow()).getAmount();
-                    if (isDouble(t.getNewValue())) {
-                        Double updatedValue = itemService.updateAmount(id, t.getNewValue());
-                        t.getTableView().getItems().get(t.getTablePosition().getRow()).setAmount(String.valueOf(updatedValue));
-                    } else {
-                        t.getTableView().getItems().get(t.getTablePosition().getRow()).setAmount(oldValue);
-                        errorAlert.setContentText("В поле \"Количество\" допустимо только положительное число в формате: \"0\", \"0.\" \"0.0\"");
-                        errorAlert.showAndWait();
+            TableColumn<Item, String> dateColumn = createColumn("Дата регистрации", "registrationDate", 110);
+            dateColumn.setStyle("-fx-alignment: CENTER;");
+            dateColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            dateColumn.setOnEditCommit(
+                    t -> {
+                        Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
+                        String oldValue = t.getTableView().getItems().get(t.getTablePosition().getRow()).getRegistrationDate();
+                        if (isDate(t.getNewValue())) {
+                            String updatedValue = null;
+                            try {
+                                updatedValue = itemService.updateRegistrationDate(id, t.getNewValue());
+                            } catch (SQLException e) {
+                                callDataBaseErrorAlert();
+                                e.printStackTrace();
+                            }
+                            t.getTableView().getItems().get(t.getTablePosition().getRow()).setRegistrationDate(updatedValue);
+                        } else {
+                            t.getTableView().getItems().get(t.getTablePosition().getRow()).setRegistrationDate(oldValue);
+                            errorAlert.setContentText("Допустимый формат даты: ДД.ММ.ГГГГ");
+                            errorAlert.showAndWait();
+                        }
+                        try {
+                            reloadDataList();
+                        } catch (SQLException e) {
+                            callDataBaseErrorAlert();
+                            e.printStackTrace();
+                        }
                     }
+            );
+
+            TableColumn<Item, String> amountColumn = createColumn("Количество", "amount", 80);
+            amountColumn.setStyle("-fx-alignment: CENTER;");
+            amountColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            amountColumn.setOnEditCommit(
+                    t -> {
+                        Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
+                        String oldValue = t.getTableView().getItems().get(t.getTablePosition().getRow()).getAmount();
+                        if (isDouble(t.getNewValue())) {
+                            Double updatedValue = null;
+                            try {
+                                updatedValue = itemService.updateAmount(id, t.getNewValue());
+                            } catch (SQLException e) {
+                                callDataBaseErrorAlert();
+                                e.printStackTrace();
+                            }
+                            t.getTableView().getItems().get(t.getTablePosition().getRow()).setAmount(String.valueOf(updatedValue));
+                        } else {
+                            t.getTableView().getItems().get(t.getTablePosition().getRow()).setAmount(oldValue);
+                            errorAlert.setContentText("В поле \"Количество\" допустимо только положительное число в формате: \"0\", \"0.\" \"0.0\"");
+                            errorAlert.showAndWait();
+                        }
+                        try {
+                            reloadDataList();
+                        } catch (SQLException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+            );
+
+            TableColumn<Item, String> descriptionColumn = createColumn("Описание", "description", 550);
+            descriptionColumn.setStyle("-fx-alignment: CENTER-LEFT;");
+            descriptionColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            descriptionColumn.setOnEditCommit(
+                    t -> {
+                        Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
+                        String updatedValue = null;
+                        try {
+                            updatedValue = itemService.updateDescription(id, t.getNewValue());
+                        } catch (SQLException e) {
+                            callDataBaseErrorAlert();
+                            e.printStackTrace();
+                        }
+                        t.getTableView().getItems().get(t.getTablePosition().getRow()).setDescription(updatedValue);
+                    }
+            );
+
+            TableColumn<Item, String> imageColumn = new TableColumn<>("Изображение");
+            imageColumn.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().getPathToImage()).getReadOnlyProperty());
+            imageColumn.setCellFactory(p -> new ImageCell<>());
+            imageColumn.setPrefWidth(100);
+
+            TableColumn<Item, Item> buttonsColumn = getButtonsColumn(stage, comfirmAlert);
+
+            tableView.getColumns().addAll(activeColumn, idColumn, nameColumn, dateColumn, amountColumn, descriptionColumn, imageColumn, buttonsColumn);
+
+            final TextField addName = createTextField("*Наименование", nameColumn.getPrefWidth());
+            final TextField addAmount = createTextField("*Количество", amountColumn.getPrefWidth());
+            final TextField addDescription = createTextField("Описание", descriptionColumn.getPrefWidth());
+
+            addName.setMinWidth(120);
+            addAmount.setMinWidth(100);
+            addDescription.setMinWidth(400);
+
+            Text imagePath = new Text("Нет изображения");
+            final Button loadImageButton = new Button("Загрузить картинку");
+
+            loadImageButton.setOnAction(event -> {
+                File file = getImageFile(stage);
+                if (file != null) {
+                    imagePath.setText(file.getAbsolutePath());
+                }
+            });
+
+            final Button addNoteButton = new Button("Добавить запись");
+            addNoteButton.setOnAction(e -> {
+                Item newItem;
+                if (addName.getText() == null || addName.getText().isEmpty() || addAmount.getText() == null || addAmount.getText().isEmpty()) {
+                    noteForAddField.setFill(Color.RED);
+                    PauseTransition visiblePause = new PauseTransition(
+                            Duration.seconds(4)
+                    );
+                    visiblePause.setOnFinished(
+                            event -> noteForAddField.setFill(Color.BLACK)
+                    );
+                    visiblePause.play();
+                    return;
+                }
+
+                if (!isDouble(addAmount.getText())) {
+                    addAmount.clear();
+                    errorAlert.setContentText("В поле \"Количество\" допустимо только положительное число в формате: \"0\", \"0.\" \"0.0\"");
+                    errorAlert.showAndWait();
+                    return;
+                }
+
+                if (imagePath.getText().equals("Нет изображения")) {
+                    try {
+                        newItem = itemService.createItem(addName.getText(), addAmount.getText(), addDescription.getText(), null);
+                        data.add(newItem);
+                        addName.clear();
+                        addAmount.clear();
+                        addDescription.clear();
+                        imagePath.setText("Нет изображения");
+                    } catch (SQLException ex) {
+                        callDataBaseErrorAlert();
+                        ex.printStackTrace();
+                    }
+                } else {
+                    try {
+                        newItem = itemService.createItem(addName.getText(), addAmount.getText(), addDescription.getText(), imagePath.getText());
+                        data.add(newItem);
+                        addName.clear();
+                        addAmount.clear();
+                        addDescription.clear();
+                        imagePath.setText("Нет изображения");
+                    } catch (SQLException ex) {
+                        callDataBaseErrorAlert();
+                        ex.printStackTrace();
+                    }
+
+                }
+                try {
                     reloadDataList();
+                } catch (SQLException ex) {
+                    callDataBaseErrorAlert();
+                    ex.printStackTrace();
                 }
-        );
+            });
 
-        TableColumn<Item, String> descriptionColumn = createColumn("Описание", "description", 550);
-        descriptionColumn.setStyle("-fx-alignment: CENTER-LEFT;");
-        descriptionColumn.setCellFactory(TextFieldTableCell.forTableColumn());
-        descriptionColumn.setOnEditCommit(
-                t -> {
-                    Long id = t.getTableView().getItems().get(t.getTablePosition().getRow()).getId();
-                    String updatedValue = itemService.updateDescription(id, t.getNewValue());
-                    t.getTableView().getItems().get(t.getTablePosition().getRow()).setDescription(updatedValue);
-                }
-        );
+            final Button saveToFileButton = getSaveButton(stage, resultOfSavingText);
+            final Button clearTableButton = getClearTableButton(comfirmAlert);
 
-        TableColumn<Item, String> imageColumn = new TableColumn<>("Изображение");
-        imageColumn.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().getPathToImage()).getReadOnlyProperty());
-        imageColumn.setCellFactory(p -> new ImageCell<>());
-        imageColumn.setPrefWidth(100);
+            addRowsHBox.getChildren().addAll(addNoteButton, addName, addAmount, addDescription, loadImageButton, imagePath);
+            addRowsHBox.setPrefWidth(1320);
+            addRowsHBox.setSpacing(10);
 
-        TableColumn<Item, Item> buttonsColumn = getButtonsColumn(stage, comfirmAlert);
+            saveToFileHBox.getChildren().addAll(saveToFileButton, resultOfSavingText);
+            saveToFileHBox.setSpacing(10);
 
-        tableView.getColumns().addAll(activeColumn, idColumn, nameColumn, dateColumn, amountColumn, descriptionColumn, imageColumn, buttonsColumn);
+            final VBox vbox = new VBox();
+            vbox.setSpacing(5);
+            vbox.setPadding(new Insets(10, 0, 0, 10));
+            vbox.getChildren().addAll(label, tableView, addRowsHBox, noteForAddField, saveToFileHBox, clearTableButton);
 
-        final TextField addName = createTextField("*Наименование", nameColumn.getPrefWidth());
-        final TextField addAmount = createTextField("*Количество", amountColumn.getPrefWidth());
-        final TextField addDescription = createTextField("Описание", descriptionColumn.getPrefWidth());
-
-        addName.setMinWidth(120);
-        addAmount.setMinWidth(100);
-        addDescription.setMinWidth(400);
-
-        Text imagePath = new Text("Нет изображения");
-        final Button loadImageButton = new Button("Загрузить картинку");
-
-        loadImageButton.setOnAction(event -> {
-            File file = getImageFile(stage);
-            if (file != null) {
-                imagePath.setText(file.getAbsolutePath());
-            }
-        });
-
-        final Button addNoteButton = new Button("Добавить запись");
-        addNoteButton.setOnAction(e -> {
-            Item newItem;
-            if (addName.getText() == null || addName.getText().isEmpty() || addAmount.getText() == null || addAmount.getText().isEmpty()) {
-                noteForAddField.setFill(Color.RED);
-                PauseTransition visiblePause = new PauseTransition(
-                        Duration.seconds(4)
-                );
-                visiblePause.setOnFinished(
-                        event -> noteForAddField.setFill(Color.BLACK)
-                );
-                visiblePause.play();
-                return;
-            }
-
-            if (!isDouble(addAmount.getText())) {
-                addAmount.clear();
-                errorAlert.setContentText("В поле \"Количество\" допустимо только положительное число в формате: \"0\", \"0.\" \"0.0\"");
-                errorAlert.showAndWait();
-                return;
-            }
-
-            if (imagePath.getText().equals("Нет изображения")) {
-                newItem = itemService.createItem(addName.getText(), addAmount.getText(), addDescription.getText(), null);
-                data.add(newItem);
-                addName.clear();
-                addAmount.clear();
-                addDescription.clear();
-                imagePath.setText("Нет изображения");
-            } else {
-                newItem = itemService.createItem(addName.getText(), addAmount.getText(), addDescription.getText(), imagePath.getText());
-                data.add(newItem);
-                addName.clear();
-                addAmount.clear();
-                addDescription.clear();
-                imagePath.setText("Нет изображения");
-            }
-            reloadDataList();
-        });
-
-        final Button saveToFileButton = getSaveButton(stage, resultOfSavingText);
-        final Button clearTableButton = getClearTableButton(comfirmAlert);
-
-        addRowsHBox.getChildren().addAll(addNoteButton, addName, addAmount, addDescription, loadImageButton, imagePath);
-        addRowsHBox.setPrefWidth(1320);
-        addRowsHBox.setSpacing(10);
-
-        saveToFileHBox.getChildren().addAll(saveToFileButton, resultOfSavingText);
-        saveToFileHBox.setSpacing(10);
-
-        final VBox vbox = new VBox();
-        vbox.setSpacing(5);
-        vbox.setPadding(new Insets(10, 0, 0, 10));
-        vbox.getChildren().addAll(label, tableView, addRowsHBox, noteForAddField, saveToFileHBox, clearTableButton);
-
-        ((Group) scene.getRoot()).getChildren().addAll(vbox);
-        stage.setScene(new Scene(new Group(vbox)));
-        stage.show();
+            ((Group) scene.getRoot()).getChildren().addAll(vbox);
+            stage.setScene(new Scene(new Group(vbox)));
+            stage.show();
+        } catch (SQLException e) {
+            callDataBaseErrorAlert();
+            e.printStackTrace();
+        }
     }
 
     private Button getClearTableButton(Alert comfirmAlert) {
@@ -230,8 +285,14 @@ public class ItemTableView extends Application {
             comfirmAlert.setHeaderText("Вы действительно хотите удалить все данные из таблицы?");
             Optional<ButtonType> option = comfirmAlert.showAndWait();
             if (option.isPresent() && option.get() == ButtonType.OK) {
-                itemService.deleteAll();
-                reloadDataList();
+                try {
+                    itemService.deleteAll();
+                    reloadDataList();
+                } catch (SQLException e) {
+                    callDataBaseErrorAlert();
+                    e.printStackTrace();
+                }
+
             }
         });
         return clearTableButton;
@@ -290,8 +351,14 @@ public class ItemTableView extends Application {
                 changeImageButton.setOnAction(event -> {
                     File file = getImageFile(stage);
                     if (file != null) {
-                        itemService.updatePathToImage(item.getId(), file.getAbsolutePath());
-                        reloadDataList();
+                        try {
+                            itemService.updatePathToImage(item.getId(), file.getAbsolutePath());
+                            reloadDataList();
+                        } catch (SQLException e) {
+                            callDataBaseErrorAlert();
+                            e.printStackTrace();
+                        }
+
                     }
                 });
 
@@ -300,8 +367,13 @@ public class ItemTableView extends Application {
                     comfirmAlert.setHeaderText("Вы действительно хотите удалить изображение?");
                     Optional<ButtonType> option = comfirmAlert.showAndWait();
                     if (option.isPresent() && option.get() == ButtonType.OK) {
-                        itemService.deletePathToImage(item.getId());
-                        reloadDataList();
+                        try {
+                            itemService.deletePathToImage(item.getId());
+                            reloadDataList();
+                        } catch (SQLException e) {
+                            callDataBaseErrorAlert();
+                            e.printStackTrace();
+                        }
                     }
                 });
 
@@ -311,8 +383,18 @@ public class ItemTableView extends Application {
                     comfirmAlert.setHeaderText("Вы действительно хотите удалить строку?");
                     Optional<ButtonType> option = comfirmAlert.showAndWait();
                     if (option.isPresent() && option.get() == ButtonType.OK) {
-                        itemService.deleteById(item.getId());
-                        reloadDataList();
+                        try {
+                            itemService.deleteById(item.getId());
+                        } catch (SQLException e) {
+                            callDataBaseErrorAlert();
+                            e.printStackTrace();
+                        }
+                        try {
+                            reloadDataList();
+                        } catch (SQLException e) {
+                            callDataBaseErrorAlert();
+                            e.printStackTrace();
+                        }
                     }
                 });
             }
@@ -334,7 +416,7 @@ public class ItemTableView extends Application {
         return field;
     }
 
-    private void reloadDataList() {
+    private void reloadDataList() throws SQLException {
         data.clear();
         data.addAll(itemService.getAll());
     }
@@ -363,5 +445,13 @@ public class ItemTableView extends Application {
                 new FileChooser.ExtensionFilter("Файл изображения", "*.jpg")
         );
         return fileChooser.showOpenDialog(stage);
+    }
+
+    private void callDataBaseErrorAlert() {
+        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+        errorAlert.setHeaderText(null);
+        errorAlert.setTitle("Ошибка!");
+        errorAlert.setContentText("Возникла ошибка при обращении к базе данных");
+        errorAlert.showAndWait();
     }
 }
