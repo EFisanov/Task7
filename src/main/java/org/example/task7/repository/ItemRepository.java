@@ -19,8 +19,6 @@ public class ItemRepository {
              PreparedStatement statement = connection.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, name);
             statement.setTimestamp(2, Timestamp.valueOf(date));
-            System.out.println(date);
-            System.out.println(Timestamp.valueOf(date));
             statement.setDouble(3, amount);
             statement.setString(4, description);
             statement.setString(5, pathToImage);
